@@ -1,8 +1,14 @@
-# 好好学习 ⛽
+# 好好学习 ⛽ 
 
-This is a command line power tool for generating and exporting Chinese language learning flashcards into Anki.
+HaoHaoXueXi is a command line power tool for generating and exporting Chinese language learning flashcards into Anki.
 
-Requirements:
+**Features**:
+- Save exports from popular apps like Pleco and ZhongWen straight into Anki
+- Generate cards from custom word and sentence lists
+- Automatically generate Google translations, pinyin, CE-CCDICT definitions, and traditional/simplified characters
+- Format output Anki cards with HTML
+
+**Requirements**:
 - Python v3.6 or above
 - Anki installed and running with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) plugin installed (Visit http://localhost:8765 to test AnkiConnect)
 
@@ -22,6 +28,8 @@ This script converts Zhongwen, Pleco, and any other text files containing Chines
 
 ## Usage
 
+### Word card exports from Pleco or Zhongwen
+
 Use like:
 
 ```
@@ -33,15 +41,45 @@ hhxx
 --deck "Vocabulary"
 ```
 
-If you have a custom list that may or may not have all the required columns, hhxx can generate these columns for you. For example, if you have simple list of sentences like:
+### Custom Word cards
 
+Let's say you've got your own CSV word list which contain simplified chinese words with their definitions. You would like to generate ANKI Cards that also contain the pinyin and traditional character equivalents.
+
+Input text file:
+```
+动物,animal
+动物园,zoo; zoological garden
+奋斗,struggle; fight
+千年,millennium
+```
+
+Specify the input format with `"{content} {definition}"` and set comma as the delimiter, then design your output Anki cards with specifiers like `{pinyin}` and `{oppositeCharacters}`
+```
+hhxx
+--input words.txt
+--format "{content} {definition}"
+--front "<h2>{content}</h2>"
+--back "<h4>({pinyin})</h4> <br /> {definition}<br /> 繁体字: {oppositeCharacters}"
+--deck "Words"
+--delimiter ','
+```
+
+The above generates a card that looks like:
+
+![ANKI Word Card](images/wordExample.png)
+
+### Custom Sentence cards
+
+If you have a list of sentences, in addition to the fields above, `hhxx` can also generate Google translations.
+
+Input text file:
 ```
 我知道如果要写很漂亮的字, 应该多练习。
 我认为认识汉字不太难，可是记着怎么写字特别难。
 繁体字有很多历史和文化，但是写着不容易。
 ```
 
-You can import this text file with a custom input format with a single `{content}` column, and auto generate the remaining fields in HTML.
+You can import this text file with a custom input format with a single `{content}` column, and use `{translation}` in the card back.
 ```
 hhxx
 --input sentences.txt
