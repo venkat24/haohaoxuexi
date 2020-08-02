@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+
+import os, sys, time
+import argparse
+import asyncio
+from enum import Enum
+from typing import List
+
+import inputformats
+from cards import Card, AnkiCard
+from characters import CharacterSet
+from ankiclient import AnkiClient, DefaultHost
+
+class InputFileType(Enum):
+    zhongwen = 'zhongwen'
+    pleco = 'pleco'
+
+    def __str__(self):
+        return self.value
+
+def deleteFile(fileName):
+    os.remove(fileName)
+    print(f"Deleted {fileName}...")
+
+# Parse arguments
+def getArgs():
+    parser = argparse.ArgumentParser(description=f"""
+Export cards from various Chinese learning tools and your own lists into Anki, and automatically
+generate pinyin, dictionary definitions, traditional/simplified characters, and Google translations.
+
+To import from a known application like the Zhongwen Chrome Plugin or Pleco Dictionary, simply use -t zhongwen or -t pleco
+
+If you are inputting from a custom file, your file must be delimiter separated (like a .tsv or .csv)
+with each column corresponding to one if these specifiers (you may pass {{skip}} to ignore a column): 
+[{', '.join(list(map(lambda s: '{'+ s +'}', Card.fields())))}]
+
+For example, if your input file has 2 columns like below
+"情调     sentiment; tone and mood; taste"
+
+You may pass the format string:
+-F "{{content}} {{definition}}"
+
+Then, pass what you want the front and back of your output Anki cards to look like. Format them with the same specifiers.
+Fields that are not present in the input file will be generated for you. You can also use HTML in these card templates.
+
+--front "{{content}}"
+--back "<h2>({{pinyin}})</h2> <br /> {{translation}} <br /> Traditional: {{oppositeCharacters}}"
+
+For the card back above, pinyin, Google translations, and Traditional Chinese characters will be auto generated.""",
+    formatter_class=argparse.RawTextHelpFormatter)
+
+    # Required inputs
+    parser.add_argument('-i', '--input', help="Input file name", dest="inputFile", required=True)
+    parser.add_argument('-d', "--deck", help="Name of the ANKI deck to upload to", dest="deckName", required=True)
+    parser.add_argument('-f', '--front', help = "Format template for the card front", dest="frontFormat", required=True)
+    parser.add_argument('-b', '--back', help = "Format template for the card back", dest="backFormat", required=True)
+
+    # Required output format specifier
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-t', "--type", help="Import from an export file of a known application", dest="fileType", type=InputFileType, choices=list(InputFileType))
+    group.add_argument('-F', "--format", help=f"Custom input file format", dest="inputFormat")
+
+    # Additional configurations
+    parser.add_argument('-H', "--ankihost", help="Hostname or IP of the AnkiConnect server, use this only if you reassigned your AnkiConnect host", dest="ankiHost", default=DefaultHost)
+    parser.add_argument('-D', "--delimiter", help="Delimiter for the input file, set to tab by default", default="\t")
+    parser.add_argument('--no-delete', help="Skip deletion of the input file at the end", dest="delete", action='store_false', default=True)
+    parser.add_argument('--traditional', help="Prefer traditional characters, otherwise content will be in Simplified Chinese by default", dest='traditional', action='store_true', default=False)
+    
+    return parser.parse_args()
+
+# Convert a line into a Card object based in the given format string and delimiter
+def getCardFromLine(line: str, format: str, delimiter: str, characterSet = CharacterSet.simplified):
+    items = line.strip().split(delimiter)
+    fieldKeys = list(map(lambda s: s[1:][:-1], format.split(" ")))
+    
+    if len(items) != len(fieldKeys):
+        raise Exception(f"The number of items in each row must be {len(fieldKeys)}, but found {len(items)} (format: {format})")
+
+    inputFields = {}
+    for item, field in zip(items, fieldKeys):
+        if field == "skip":
+            continue
+        inputFields[field] = item
+
+    return Card(characterSet, **inputFields)
+
+# Return input format specifier from standard formats
+def getInputFormat(fileType: InputFileType):
+    if fileType == InputFileType.zhongwen:
+        return inputformats.Zhongwen
+    elif fileType == InputFileType.pleco:
+        return inputformats.Pleco
+    
+async def main():
+    args = getArgs()
+
+    # Load input format from standard set, or use user defined format
+    inputFormat = args.inputFormat if args.inputFormat is not None else getInputFormat(args.fileType)
+
+    # Open input file and read contents
+    with open(args.inputFile, 'r') as infile:
+        contents = infile.read()
+
+    # Parse contents as cards
+    cards = []
+    lines = [line for line in contents.split(os.linesep) if line.strip() != '']
+    for line in lines:
+        cards.append(getCardFromLine(line, inputFormat, args.delimiter))
+
+    print(f"Read {len(cards)} cards...")
+
+    # Create a new Anki Client
+    ankiClient = AnkiClient(args.deckName, args.ankiHost)
+    existingCards = await ankiClient.getCards()
+    print(f"Found {len(existingCards)} cards already in deck {args.deckName} on ANKI...")
+
+    for i, card in enumerate(cards):
+        try:
+            await ankiClient.createCard(card.generateAnkiCard(args.frontFormat, args.backFormat))
+        except:
+            print(f"Duplicate card {i+1} of {len(cards)} ({card.content()}), skipping...")
+            continue
+
+        print(f"Added card {i+1} of {len(cards)} ({card.content()})...")
+    
+    if args.delete:
+        deleteFile(args.inputFile)
+
+    print(f"Completed! 去好好学习 :)")
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
