@@ -53,7 +53,7 @@ Input text file:
 千年,millennium
 ```
 
-Specify the input format with `"{content} {definition}"` and set comma as the delimiter, then design your output Anki cards with specifiers like `{pinyin}` and `{oppositeCharacters}`
+Specify the input format with `"{content} {definition}"` and set comma as the delimiter, then design your output Anki cards with specifiers like `{pinyin}` and `{oppositeCharacters}`. You can any of these specifiers on the card front too (if for example you want both character sets on the front of the card, or to generate English -> Chinese cards)
 ```
 hhxx
 --input words.txt
@@ -70,7 +70,7 @@ The above generates a card that looks like:
 
 ### Custom Sentence cards
 
-If you have a list of sentences, in addition to the fields above, `hhxx` can also generate Google translations.
+If you have a list of sentences, `hhxx` can also generate Google translations.
 
 Input text file:
 ```
@@ -79,7 +79,7 @@ Input text file:
 繁体字有很多历史和文化，但是写着不容易。
 ```
 
-You can import this text file with a custom input format with a single `{content}` column, and use `{translation}` in the card back.
+You can import this text file with a custom input format having a single `{content}` column, and use `{translation}` in the card back. Optionally specify the `--no-delete` flag to preserve the input file.
 ```
 hhxx
 --input sentences.txt
