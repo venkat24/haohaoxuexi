@@ -105,7 +105,7 @@ async def main():
     cards = []
     lines = [line for line in contents.split(os.linesep) if line.strip() != '']
     for line in lines:
-        cards.append(getCardFromLine(line, inputFormat, args.delimiter))
+        cards.append(getCardFromLine(line, inputFormat, args.delimiter, CharacterSet.traditional if args.traditional else CharacterSet.simplified))
 
     print(f"Read {len(cards)} cards...")
 

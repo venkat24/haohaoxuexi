@@ -108,7 +108,7 @@ class Card():
 
     # Get content in the opposite character set
     def _oppositeCharacterSet(self, content: str):
-        value = self._convertToCharacterSet(content, self._characterSet.getOpposite)
+        value = self._convertToCharacterSet(content, self._characterSet.getOpposite())
 
         self._inputValues["oppositeCharacters"] = value
         return value
